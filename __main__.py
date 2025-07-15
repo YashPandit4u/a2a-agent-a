@@ -11,6 +11,7 @@ from a2a.types import (
 from agent_executor import (
     OCIAllRealmFinderAgentExecutor,
 )
+from starlette.responses import JSONResponse
 
 
 if __name__ == '__main__':
@@ -44,4 +45,13 @@ if __name__ == '__main__':
         http_handler=request_handler,
     )
 
-    uvicorn.run(server.build(), host='0.0.0.0', port=9999)
+    # get underlying Starlette app
+    app = server.build()
+
+    # add your /health route
+    @app.route("/health")
+    async def health(request):
+        return JSONResponse({"status": "ok"})
+
+    # uvicorn.run(server.build(), host='0.0.0.0', port=9999)
+    uvicorn.run(app, host='0.0.0.0', port=9999)
