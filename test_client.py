@@ -2,6 +2,7 @@ import logging
 from typing import Any
 from uuid import uuid4
 import httpx
+import oci
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import (
     AgentCard,
@@ -10,13 +11,55 @@ from a2a.types import (
     SendStreamingMessageRequest,
 )
 
+class OCISignerAuth(httpx.Auth):
+    def __init__(self, signer):
+        self.signer = signer
+    def auth_flow(self, request):
+        import requests
+        req = requests.Request(
+            method=request.method,
+            url=str(request.url),
+            headers=dict(request.headers),
+            data=request.content
+        ).prepare()
+        self.signer(req)
+        for k, v in req.headers.items():
+            request.headers[k] = v
+        yield request
+
+def get_auth():
+    PROFILE_NAME = 'default'
+    SECURITY_TOKEN_FILE_KEY = 'security_token_file'
+    KEY_FILE_KEY = 'key_file'
+    config = oci.config.from_file(profile_name=PROFILE_NAME)
+    token_file = config[SECURITY_TOKEN_FILE_KEY]
+    with open(token_file, 'r') as f:
+        token = f.read()
+    private_key = oci.signer.load_private_key_from_file(config[KEY_FILE_KEY])
+    signer = oci.auth.signers.SecurityTokenSigner(token, private_key)
+    return OCISignerAuth(signer)
+
+def get_auth_rps():
+    print(f'[YashPandit] Getting RPS auth')
+    rps = oci.auth.signers.get_resource_principals_signer()
+    print(f'[YashPandit] RPS auth: {rps}')
+    print(f'[YashPandit] RPS token: {rps.get_security_token()}')
+    return OCISignerAuth(rps)
+
 async def main() -> None:
     PUBLIC_AGENT_CARD_PATH = '/.well-known/agent.json'
     EXTENDED_AGENT_CARD_PATH = '/agent/authenticatedExtendedCard'
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    base_url = 'http://localhost:9999'
-    async with httpx.AsyncClient() as httpx_client:
+    # Agent A local
+    # base_url = 'http://localhost:9998/a2a/'
+    # Agent B local
+    # base_url = 'http://localhost:9999/a2a/'
+    # Agent A 
+    base_url = 'https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqavsz3dipblcb6ckgwljls5qosxramv4osvt77tr5nnrra/predict/a2a/'
+    # Agent B
+    # base_url = 'https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqayzxhro3tqig45qhlv7lpeorfijnic3tw35dli6n6mbva/predict/a2a/'
+    async with httpx.AsyncClient(auth=get_auth(), verify=False, headers={"Content-Length": "0"}) as httpx_client:
         resolver = A2ACardResolver(
             httpx_client=httpx_client,
             base_url=base_url,
@@ -107,13 +150,15 @@ async def main() -> None:
             print(chunk.model_dump(mode='json', exclude_none=True))
 
 async def get_agent_answer(base_url: str, question: str) -> str:
+    print(f'[YashPandit] Sending request to other agent: {base_url}')
     PUBLIC_AGENT_CARD_PATH = '/.well-known/agent.json'
-    async with httpx.AsyncClient() as httpx_client:
+    async with httpx.AsyncClient(auth=get_auth_rps(), verify=False, headers={"Content-Length": "0"}) as httpx_client:
         resolver = A2ACardResolver(
             httpx_client=httpx_client,
             base_url=base_url,
         )
         _public_card = await resolver.get_agent_card()
+        print(f'[YashPandit] Resolved agent card: {_public_card}')
         client = A2AClient(
             httpx_client=httpx_client, agent_card=_public_card
         )
@@ -130,6 +175,7 @@ async def get_agent_answer(base_url: str, question: str) -> str:
             id=str(uuid4()), params=MessageSendParams(**send_message_payload)
         )
         response = await client.send_message(request)
+        print(f'[YashPandit] Response: {response}')
         try:
             parts = response.result.message.parts
             for part in parts:

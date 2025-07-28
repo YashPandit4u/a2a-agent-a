@@ -12,7 +12,21 @@ from agent_executor import (
     OCIAllRealmFinderAgentExecutor,
 )
 from starlette.responses import JSONResponse
+from starlette.applications import Starlette
+from starlette.requests import Request
 
+class PrefixDispatcher:
+    def __init__(self, app, prefix="/a2a"):
+        self.app = app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].startswith(self.prefix + "/"):
+            scope = dict(scope)
+            scope["path"] = scope["path"][len(self.prefix):]
+            if not scope["path"]:
+                scope["path"] = "/"
+        await self.app(scope, receive, send)
 
 if __name__ == '__main__':
     skill = AgentSkill(
@@ -26,7 +40,8 @@ if __name__ == '__main__':
     public_agent_card = AgentCard(
         name='OCI Realm Finder Agent',
         description='Just a OCI realm finder agent',
-        url='http://localhost:9999/',
+        # url='http://localhost:9999/', # TODO: change to the actual url of MD
+        url='https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqavsz3dipblcb6ckgwljls5qosxramv4osvt77tr5nnrra/predict/a2a/',
         version='1.0.0',
         defaultInputModes=['text'],
         defaultOutputModes=['text'],
@@ -45,13 +60,18 @@ if __name__ == '__main__':
         http_handler=request_handler,
     )
 
-    # get underlying Starlette app
     app = server.build()
+    prefix_app = PrefixDispatcher(app, prefix="/a2a")
+    starlette_app = Starlette()
 
-    # add your /health route
-    @app.route("/health")
-    async def health(request):
+    @starlette_app.route("/health")
+    async def health(request: Request):
         return JSONResponse({"status": "ok"})
 
-    # uvicorn.run(server.build(), host='0.0.0.0', port=9999)
-    uvicorn.run(app, host='0.0.0.0', port=9999)
+    async def main_app(scope, receive, send):
+        if scope["type"] == "http" and scope["path"].startswith("/health"):
+            await starlette_app(scope, receive, send)
+        else:
+            await prefix_app(scope, receive, send)
+
+    uvicorn.run(main_app, host='0.0.0.0', port=9999)

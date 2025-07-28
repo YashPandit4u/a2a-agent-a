@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "a2a-sdk[mysql,postgresql,sql,sqlite]>=0.2.11",
+    "oci>=2.155.2",
     "python-a2a>=0.5.9",
 ]

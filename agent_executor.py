@@ -9,7 +9,8 @@ class OCIAllRealmFinderAgent:
 
     def __init__(self):
         # URL of the other agent to call (update as needed)
-        self.other_agent_url = "http://localhost:9998"
+        # self.other_agent_url = "http://localhost:9998/a2a"
+        self.other_agent_url = "https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqayzxhro3tqig45qhlv7lpeorfijnic3tw35dli6n6mbva/predict/a2a/"
 
     async def invoke(self) -> dict:
         # Use the shared get_agent_answer function to call the other agent
