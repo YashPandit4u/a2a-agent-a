@@ -1,5 +1,5 @@
 import uvicorn
-
+import os
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
@@ -29,6 +29,9 @@ class PrefixDispatcher:
         await self.app(scope, receive, send)
 
 if __name__ == '__main__':
+
+    agent_a_url = os.getenv('AGENT_A_URL')
+
     skill = AgentSkill(
         id='oci_realm_finder',
         name='Returns OCI functioning realms and their status',
@@ -41,7 +44,8 @@ if __name__ == '__main__':
         name='OCI Realm Finder Agent',
         description='Just a OCI realm finder agent',
         # url='http://localhost:9999/', # TODO: change to the actual url of MD
-        url='https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqavsz3dipblcb6ckgwljls5qosxramv4osvt77tr5nnrra/predict/a2a/',
+        # url='https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqavsz3dipblcb6ckgwljls5qosxramv4osvt77tr5nnrra/predict/a2a/',
+        url=agent_a_url,
         version='1.0.0',
         defaultInputModes=['text'],
         defaultOutputModes=['text'],

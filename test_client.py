@@ -51,14 +51,8 @@ async def main() -> None:
     EXTENDED_AGENT_CARD_PATH = '/agent/authenticatedExtendedCard'
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
-    # Agent A local
-    # base_url = 'http://localhost:9998/a2a/'
-    # Agent B local
-    # base_url = 'http://localhost:9999/a2a/'
-    # Agent A 
-    base_url = 'https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqavsz3dipblcb6ckgwljls5qosxramv4osvt77tr5nnrra/predict/a2a/'
-    # Agent B
-    # base_url = 'https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.datasciencemodeldeployment.oc1.iad.amaaaaaay75uckqayzxhro3tqig45qhlv7lpeorfijnic3tw35dli6n6mbva/predict/a2a/'
+
+    base_url = 'https://modeldeployment.us-ashburn-1.oci.customer-oci.com/ocid1.tenancy.oc1..aaaaaaaafwgqzxcwlkkpl5i334qpv62s375upsw2j4ufgcizfnnhjd4l55ia/agent-a/predict'
     async with httpx.AsyncClient(auth=get_auth(), verify=False, headers={"Content-Length": "0"}) as httpx_client:
         resolver = A2ACardResolver(
             httpx_client=httpx_client,
